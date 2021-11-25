@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ################################################################################
-## {Description}: Publishing Image, FPS, Frame Count msg
+## {Description}: Publishing Image, FPS, Frame Count msg (Faster; Multithreading)
 ################################################################################
 ## Author: Khairul Izwan Bin Kamsani
 ## Version: {1}.{0}.{0}
@@ -10,6 +10,7 @@
 
 # import the necessary Python packages
 from __future__ import print_function
+from imutils.video import WebcamVideoStream
 import sys
 import cv2
 import time
@@ -28,7 +29,7 @@ from cv_bridge import CvBridgeError
 import rospy
 
 
-class WebcamPublish:
+class WebcamPublishFaster:
 
 	def __init__(self):
 	
@@ -45,11 +46,11 @@ class WebcamPublish:
 		# used to record the time at which we processed current frame
 		self.new_frame_time = 0
 
-		rospy.logwarn("WebcamPublish Node [ONLINE]...")
+		rospy.logwarn("WebcamPublishFaster Node [ONLINE]...")
 
 		# Create a VideoCapture object
 		# The argument '0' gets the default webcam.
-		self.cap = cv2.VideoCapture(0)
+		self.cap = WebcamVideoStream(src=0).start()
 
 		# rospy shutdown
 		rospy.on_shutdown(self.cbShutdown)
@@ -75,18 +76,18 @@ class WebcamPublish:
 	# rospy shutdown callback
 	def cbShutdown(self):
 
-		rospy.logerr("WebcamPublish Node [OFFLINE]...")
+		rospy.logerr("WebcamPublishFaster Node [OFFLINE]...")
 
 	def cbPublishImage(self):
 	
 		# Capture frame-by-frame
 		# This method returns True/False as well
 		# as the video frame.
-		self.ret, self.frame = self.cap.read()
+		self.frame = self.cap.read()
 
 		self.frameValue.data += 1
 
-		if self.ret == True:
+		if self.frame is not None:
 #			# Print debugging information to the terminal
 #			rospy.loginfo('publishing video frame')
 
@@ -127,12 +128,12 @@ class WebcamPublish:
 if __name__ == '__main__':
 
 	# Initialize
-	rospy.init_node('WebcamPublish', anonymous=False)
-	wp = WebcamPublish()
+	rospy.init_node('WebcamPublishFaster', anonymous=False)
+	wpf = WebcamPublishFaster()
 	
 	r = rospy.Rate(60)
 
 	# Camera preview
 	while not rospy.is_shutdown():
-		wp.cbPublishImage()
+		wpf.cbPublishImage()
 		r.sleep()

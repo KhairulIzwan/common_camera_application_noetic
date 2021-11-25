@@ -1,48 +1,146 @@
 #!/usr/bin/env python3
-# Description:
-# - Subscribes to real-time streaming video from your built-in webcam.
-#
-# Author:
-# - Addison Sears-Collins
-# - https://automaticaddison.com
 
-# Import the necessary libraries
-import rospy # Python library for ROS
-from sensor_msgs.msg import Image # Image is the message type
-from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
-import cv2 # OpenCV library
+################################################################################
+## {Description}: Subscribing Image, FPS, Frame Count msg
+################################################################################
+## Author: Khairul Izwan Bin Kamsani
+## Version: {1}.{0}.{0}
+## Email: {wansnap@gmail.com}
+################################################################################
 
-def callback(data):
+# import the necessary Python packages
+from __future__ import print_function
+import sys
+import cv2
+import time
+import imutils
 
-	# Used to convert between ROS and OpenCV images
-	br = CvBridge()
+# import the necessary ROS packages
+from std_msgs.msg import String
+from std_msgs.msg import Float32
+from std_msgs.msg import Int64
+from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo
 
-	# Output debugging information to the terminal
-	rospy.loginfo("receiving video frame")
+from cv_bridge import CvBridge
+from cv_bridge import CvBridgeError
 
-	# Convert ROS Image message to OpenCV image
-	current_frame = br.imgmsg_to_cv2(data)
+import rospy
 
-	# Display image
-	cv2.imshow("camera", current_frame)
+class WebcamSubscribe:
 
-	cv2.waitKey(1)
+	def __init__(self):
+		
+		self.bridge = CvBridge()
+		self.fpsValue = Float32()
+		self.frameValue = Int64()
+		self.image_received = False
 
-def receive_message():
+		rospy.logwarn("WebcamSubscribe Node [ONLINE]...")
 
-	# Tells rospy the name of the node.
-	# Anonymous = True makes sure the node has a unique name. Random
-	# numbers are added to the end of the name. 
-	rospy.init_node('video_sub_py', anonymous=True)
+		# rospy shutdown
+		rospy.on_shutdown(self.cbShutdown)
 
-	# Node is subscribing to the video_frames topic
-	rospy.Subscriber('video_frames', Image, callback)
+		# Subscribe to Image msg
+		self.videoFrames_topic = "/video_frames"
+		self.videoFrames_sub = rospy.Subscriber(self.videoFrames_topic, Image, self.cbImage)
 
-	# spin() simply keeps python from exiting until this node is stopped
-	rospy.spin()
+		# Subscribe to Float32 msg
+		self.fpsValue_topic = "/fps_data"
+		self.fpsValue_sub = rospy.Subscriber(self.fpsValue_topic, Float32, 
+			self.cbFpsValue)
 
-	# Close down the video stream when done
-	cv2.destroyAllWindows()
+		# Subscribe to Int64 msg
+		self.frameValue_topic = "/frame_data"
+		self.frameValue_sub = rospy.Subscriber(self.frameValue_topic, Int64, 
+			self.cbFrameValue)
+
+		# Allow up to one second to connection
+		rospy.sleep(1)
+
+	# rospy shutdown callback
+	def cbShutdown(self):
+
+		rospy.logerr("CameraPreview Node [OFFLINE]...")
+		cv2.destroyAllWindows()
+
+	# Convert image to OpenCV format
+	def cbImage(self, msg):
+
+		try:
+			self.cv_image = self.bridge.imgmsg_to_cv2(msg)
+
+			# comment if the image is mirrored
+#			self.cv_image = cv2.flip(self.cv_image, 1)
+		except CvBridgeError as e:
+			print(e)
+
+		if self.cv_image is not None:
+			self.image_received = True
+		else:
+			self.image_received = False
+
+	# Show the output frame
+	def cbShowImage(self):
+		self.cv_image_clone = imutils.resize(
+						self.cv_image.copy(),
+						width=320
+						)
+
+#		cv2.imshow("CameraPreview", self.cv_image_clone)
+		cv2.imshow("CameraPreview", self.cv_image)
+		cv2.waitKey(1)
+
+	# Preview image + info
+	def cbPreview(self):
+
+		if self.image_received:
+#			self.cbInfo()
+			self.cbShowImage()
+		else:
+			rospy.logerr("No images recieved")
+
+	# Image information callback
+	def cbInfo(self):
+
+		fontFace = cv2.FONT_HERSHEY_DUPLEX
+		fontScale = 1
+		color = (255, 255, 255)
+		thickness = 1
+		lineType = cv2.LINE_AA
+		bottomLeftOrigin = False # if True (text upside down)
+
+		self.timestr = time.strftime("%Y%m%d-%H:%M:%S")
+
+#		cv2.putText(self.cv_image, "{}".format(self.timestr), (10, 20), 
+#			fontFace, fontScale, color, thickness, lineType, 
+#			bottomLeftOrigin)
+#		cv2.putText(self.cv_image, "Sample", (10, self.imgHeight-10), 
+#			fontFace, fontScale, color, thickness, lineType, 
+#			bottomLeftOrigin)
+#		cv2.putText(self.cv_image, "(%d, %d)" % (self.imgWidth, self.imgHeight), 
+#			(self.imgWidth-100, self.imgHeight-10), fontFace, fontScale, 
+#			color, thickness, lineType, bottomLeftOrigin)
+
+		cv2.putText(self.cv_image, "%d:%.2f" % (self.frameValue, self.fpsValue), (10, 20), 
+			fontFace, fontScale, color, thickness, lineType, 
+			bottomLeftOrigin)
+
+	def cbFpsValue(self, msg):
+		self.fpsValue = msg.data
+
+	def cbFrameValue(self, msg):
+		self.frameValue = msg.data
 
 if __name__ == '__main__':
-	receive_message()
+
+	# Initialize
+	rospy.init_node('WebcamSubscribe', anonymous=False)
+	ws = WebcamSubscribe()
+	
+	r = rospy.Rate(60)
+
+	# Camera preview
+	while not rospy.is_shutdown():
+		ws.cbPreview()
+		r.sleep()
