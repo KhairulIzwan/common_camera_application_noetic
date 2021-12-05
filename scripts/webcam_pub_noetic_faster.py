@@ -50,7 +50,7 @@ class WebcamPublishFaster:
 
 		# Create a VideoCapture object
 		# The argument '0' gets the default webcam.
-		self.cap = WebcamVideoStream(src=0).start()
+		self.cap = WebcamVideoStream(src=2).start()
 
 		# rospy shutdown
 		rospy.on_shutdown(self.cbShutdown)
@@ -131,7 +131,7 @@ if __name__ == '__main__':
 	rospy.init_node('WebcamPublishFaster', anonymous=False)
 	wpf = WebcamPublishFaster()
 	
-	r = rospy.Rate(60)
+	r = rospy.Rate(120)
 
 	# Camera preview
 	while not rospy.is_shutdown():
