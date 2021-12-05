@@ -42,7 +42,7 @@ class WebcamSubscribe:
 		rospy.on_shutdown(self.cbShutdown)
 
 		# Subscribe to Image msg
-		self.videoFrames_topic = "/video_frames"
+		self.videoFrames_topic = "/cv_camera_robot1/image_raw"
 		self.videoFrames_sub = rospy.Subscriber(self.videoFrames_topic, Image, self.cbImage)
 
 		# Subscribe to Float32 msg
@@ -138,7 +138,7 @@ if __name__ == '__main__':
 	rospy.init_node('WebcamSubscribe', anonymous=False)
 	ws = WebcamSubscribe()
 	
-	r = rospy.Rate(60)
+	r = rospy.Rate(10)
 
 	# Camera preview
 	while not rospy.is_shutdown():
